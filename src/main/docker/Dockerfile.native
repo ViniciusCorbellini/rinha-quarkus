@@ -1,32 +1,40 @@
-####
-# This Dockerfile is used in order to build a container that runs the Quarkus application in native (no JVM) mode.
-#
-# Before building the container image run:
-#
-# ./mvnw package -Dnative
-#
-# Then, build the image with:
-#
-# docker build -f src/main/docker/Dockerfile.native -t quarkus/rinha-quarkus .
-#
-# Then run the container using:
-#
-# docker run -i --rm -p 8080:8080 quarkus/rinha-quarkus
-#
-# The ` registry.access.redhat.com/ubi8/ubi-minimal:8.10` base image is based on UBI 9.
-# To use UBI 8, switch to `quay.io/ubi8/ubi-minimal:8.10`.
-###
-# Etapa 1: build com GraalVM
-FROM quay.io/quarkus/ubi-quarkus-native-image:22.1-java17 AS build
-WORKDIR /project
-COPY . .
-# RUN chmod +x ./mvnw ## RODE: "./mvnw package -Pnative -Dquarkus.native.container-build=true" antes de docker compose up --build
-# RUN ./mvnw package -Pnative -Dquarkus.native.container-build=true
+# ---- Etapa 1: Build ----
+# Imagem de build baseada em UBI 9 (com glibc 2.34+) e JDK 21
+FROM quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-21 AS build
 
-# Etapa 2: runtime (imagem final leve)
-FROM quay.io/quarkus/quarkus-micro-image:2.0
+WORKDIR /project
+
+# Copie primeiro os arquivos de build
+COPY mvnw .
+COPY .mvn .mvn
+COPY pom.xml .
+
+# Baixe as dependências
+RUN ./mvnw -B dependency:go-offline
+
+# Copie o código-fonte
+COPY src src
+
+# ---- CORREÇÃO AQUI ----
+# Removemos as linhas 'USER root' e 'RUN microdnf install...'
+# pois elas não resolveram o problema.
+
+# Volte para o usuário padrão (1001) para executar o build
+USER 1001
+
+# Execute o build nativo DENTRO do container
+# ADICIONAMOS A FLAG PARA DESLIGAR O BUILD ESTÁTICO
+RUN ./mvnw package -Pnative -Dquarkus.native.container-build=false -Dquarkus.native.additional-build-args=-H:-StaticExecutableWithDynamicLibC
+
+# ---- Etapa 2: Runtime ----
+# Imagem micro baseada em UBI 9 (compatível com a de build)
+FROM quay.io/quarkus/quarkus-micro-image:3.0
+
 WORKDIR /work/
+
+# Copie o executável gerado na Etapa 1
 COPY --from=build /project/target/*-runner /work/application
+
 EXPOSE 8080
 USER 1001
 CMD ["./application", "-Dquarkus.http.host=0.0.0.0"]

@@ -9,6 +9,7 @@ build:
 
 #Sobe os serviços em modo daemon, sem usar terminal
 up:
+	
 	docker compose --compatibility up -d --build
 
 # Derruba os containers e remove volumes

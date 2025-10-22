@@ -2,6 +2,9 @@ package com.rinha.dto.transaction;
 
 import java.math.BigDecimal;
 
+import io.quarkus.runtime.annotations.RegisterForReflection;
+
+@RegisterForReflection
 public class TransactionResponseDTO {
 
     private BigDecimal limite;
