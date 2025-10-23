@@ -1,6 +1,5 @@
 package com.rinha.repository;
 
-import com.rinha.dto.account.AccountData;
 import com.rinha.dto.transaction.TransactionRequestDTO;
 import com.rinha.dto.transaction.TransactionResponseDTO;
 import com.rinha.exceptions.EntityNotFoundException;
@@ -10,10 +9,10 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 
 @ApplicationScoped
 public class TransactionRepository {
@@ -23,60 +22,41 @@ public class TransactionRepository {
 
     @Transactional
     public TransactionResponseDTO processTransaction(int clientId, TransactionRequestDTO dto)
-            throws IllegalArgumentException, EntityNotFoundException {
+            throws IllegalArgumentException, EntityNotFoundException, RuntimeException {
 
         try (Connection conn = dataSource.getConnection()) {
-            String sqlSelect = "SELECT limite, balance FROM accounts WHERE id = ? FOR UPDATE";
-            AccountData account;
+            String sql = "SELECT limite, novo_saldo FROM realizar_transacao(?, ?, ?, ?);";
 
-            try (PreparedStatement ps = conn.prepareStatement(sqlSelect)) {
-                ps.setInt(1, clientId);
-                try (ResultSet rs = ps.executeQuery()) {
-                    if (!rs.next()) {
-                        throw new EntityNotFoundException("Cliente não encontrado");
-                    }
-                    account = new AccountData(
-                            rs.getBigDecimal("limite"),
-                            rs.getBigDecimal("balance")
-                    );
-                }
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setInt(1, clientId);
+            ps.setBigDecimal(2, dto.getValor());
+            ps.setString(3, dto.getTipo());
+            ps.setString(4, dto.getDescricao());
+
+            ResultSet rs = ps.executeQuery();
+            if (!rs.next()) {
+                throw new EntityNotFoundException("Cliente não encontrado");
             }
 
-            BigDecimal accountLimit = account.limite();
-            BigDecimal balance = account.balance();
-            BigDecimal newBalance = balance;
+            return new TransactionResponseDTO(
+                    rs.getBigDecimal("limite"),
+                    rs.getBigDecimal("balance"));
 
-            if ("c".equals(dto.getTipo())) {
-                newBalance = newBalance.add(dto.getValor());
-            } else {
-                newBalance = newBalance.subtract(dto.getValor());
-                if (newBalance.compareTo(accountLimit.negate()) < 0) {
-                    throw new IllegalArgumentException("Limite excedido");
-                }
+        } catch (SQLException e) {
+            String causeMessage = e.getMessage();
+
+            if (causeMessage == null) {
+                throw new RuntimeException("Erro inesperado ao processar a transação.", e);
             }
 
-            try (PreparedStatement psUpdate = conn.prepareStatement(
-                    "UPDATE accounts SET balance = ? WHERE id = ?")) {
-                psUpdate.setBigDecimal(1, newBalance);
-                psUpdate.setInt(2, clientId);
-                psUpdate.executeUpdate();
+            if (causeMessage.contains("Cliente não encontrado")) {
+                throw new EntityNotFoundException(causeMessage);
             }
 
-            try (PreparedStatement psInsert = conn.prepareStatement(
-                    "INSERT INTO transactions (amount, type, description, account_id) VALUES (?, ?, ?, ?)")) {
-                psInsert.setBigDecimal(1, dto.getValor());
-                psInsert.setString(2, dto.getTipo());
-                psInsert.setString(3, dto.getDescricao());
-                psInsert.setInt(4, clientId);
-                psInsert.executeUpdate();
+            if (causeMessage.contains("Limite da conta excedido")) {
+                throw new IllegalArgumentException(causeMessage);
             }
-
-            return new TransactionResponseDTO(accountLimit, newBalance);
-
-        } catch (EntityNotFoundException | IllegalArgumentException e) {
-            throw e; // Propaga as exceções conhecidas
-        } catch (Exception e) {
-            throw new RuntimeException("Erro ao processar transação: " + e.getMessage(), e);
         }
+        return null;
     }
 }

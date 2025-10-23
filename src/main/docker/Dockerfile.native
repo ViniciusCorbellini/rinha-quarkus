@@ -15,14 +15,10 @@ RUN ./mvnw -B dependency:go-offline
 # Copie o código-fonte
 COPY src src
 
-# ---- CORREÇÃO AQUI ----
-# Removemos as linhas 'USER root' e 'RUN microdnf install...'
-# pois elas não resolveram o problema.
-
 # Volte para o usuário padrão (1001) para executar o build
 USER 1001
 
-# Execute o build nativo DENTRO do container
+# Executa o build nativo DENTRO do container
 # ADICIONAMOS A FLAG PARA DESLIGAR O BUILD ESTÁTICO
 RUN ./mvnw package -Pnative -Dquarkus.native.container-build=false -Dquarkus.native.additional-build-args=-H:-StaticExecutableWithDynamicLibC
 

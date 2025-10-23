@@ -20,34 +20,7 @@ public class ExtractRepository {
     AgroalDataSource dataSource;
 
     public ExtractDTO getExtractByClientId(int accountId) {
-        String sql = """
-            WITH acc AS (
-                SELECT id, balance AS total, limite, now() AS data_extrato
-                FROM accounts
-                WHERE id = ?
-            ),
-            latest_transactions AS (
-                SELECT amount, type, description, created_at
-                FROM transactions
-                WHERE account_id = (SELECT id FROM acc)
-                ORDER BY created_at DESC
-                LIMIT 10
-            )
-            SELECT
-                acc.total,
-                acc.limite,
-                acc.data_extrato,
-                (
-                    SELECT json_agg(json_build_object(
-                                'valor', t.amount,
-                                'tipo', t.type,
-                                'descricao', t.description,
-                                'realizada_em', t.created_at
-                            ))
-                    FROM latest_transactions t
-                ) AS ultimas_transacoes
-            FROM acc;
-        """;
+        String sql = "SELECT total, limite, data_extrato, ultimas_transacoes FROM obter_extrato(?);";
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
