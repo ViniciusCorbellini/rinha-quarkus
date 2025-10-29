@@ -83,7 +83,8 @@ BEGIN
     SELECT balance, limite INTO conta FROM accounts WHERE id = p_account_id FOR UPDATE;
 
     IF NOT FOUND THEN
-        RAISE EXCEPTION 'CLIENTE_NAO_ENCONTRADO';
+        RAISE EXCEPTION 'CLIENTE_NAO_ENCONTRADO'
+            USING ERRCODE = 'P0001';
     END IF;
 
     -- 2. Lógica de negócio
@@ -92,7 +93,8 @@ BEGIN
     ELSE
         v_novo_saldo := conta.balance - p_valor;
         IF v_novo_saldo < (conta.limite * -1) THEN
-            RAISE EXCEPTION 'LIMITE_INDISPONIVEL';
+            RAISE EXCEPTION 'LIMITE_INDISPONIVEL'
+                USING ERRCODE = 'P0002';
         END IF;
     END IF;
 
