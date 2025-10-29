@@ -24,7 +24,7 @@ RUN ./mvnw package -Pnative -Dquarkus.native.container-build=false -Dquarkus.nat
 
 # ---- Etapa 2: Runtime ----
 # Imagem micro baseada em UBI 9 (compatível com a de build)
-FROM quay.io/quarkus/quarkus-micro-image:3.0
+FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
 WORKDIR /work/
 

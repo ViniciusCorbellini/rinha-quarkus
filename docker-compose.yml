@@ -27,7 +27,7 @@ services:
       resources:
         limits:
           cpus: "0.50"
-          memory: "120MB"
+          memory: "250MB"
 
     ports:
       - "5433:5432"
@@ -68,7 +68,7 @@ services:
       resources:
         limits:
           cpus: "0.45"
-          memory: "220MB"
+          memory: "100MB"
 
     restart: unless-stopped
 
@@ -101,7 +101,7 @@ services:
       resources:
         limits:
           cpus: "0.45"
-          memory: "220MB"
+          memory: "100MB"
 
     restart: unless-stopped
 
@@ -127,7 +127,7 @@ services:
       resources:
         limits:
           cpus: "0.10"
-          memory: "15MB"
+          memory: "100MB"
 
     restart: unless-stopped
 

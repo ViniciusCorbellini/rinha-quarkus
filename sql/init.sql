@@ -41,8 +41,8 @@ RETURNS TABLE (
 BEGIN
     RETURN QUERY
     SELECT
-        a.balance,
-        a.limite,
+        a.balance::NUMERIC,   -- <-- FAÇA O CAST AQUI
+        a.limite::NUMERIC,    -- <-- E FAÇA O CAST AQUI
         now(),
         COALESCE(
             (SELECT
@@ -70,7 +70,7 @@ $$ LANGUAGE plpgsql;
 
 CREATE OR REPLACE FUNCTION realizar_transacao(
     p_account_id INT,
-    p_valor INT,
+    p_valor NUMERIC,
     p_tipo CHAR(1),
     p_descricao VARCHAR(10)
 )

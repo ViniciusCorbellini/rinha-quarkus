@@ -1,5 +1,10 @@
 package com.rinha.repository;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+
 import com.rinha.dto.transaction.TransactionRequestDTO;
 import com.rinha.dto.transaction.TransactionResponseDTO;
 import com.rinha.exceptions.EntityNotFoundException;
@@ -8,11 +13,7 @@ import io.agroal.api.AgroalDataSource;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
-
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import jakarta.ws.rs.InternalServerErrorException;
 
 @ApplicationScoped
 public class TransactionRepository {
@@ -25,7 +26,7 @@ public class TransactionRepository {
             throws IllegalArgumentException, EntityNotFoundException, RuntimeException {
 
         try (Connection conn = dataSource.getConnection()) {
-            String sql = "SELECT limite, novo_saldo FROM realizar_transacao(?, ?, ?, ?);";
+            String sql = "SELECT novo_limite, novo_saldo FROM realizar_transacao(?, ?, ?, ?);";
 
             PreparedStatement ps = conn.prepareStatement(sql);
             ps.setInt(1, clientId);
@@ -39,8 +40,8 @@ public class TransactionRepository {
             }
 
             return new TransactionResponseDTO(
-                    rs.getBigDecimal("limite"),
-                    rs.getBigDecimal("balance"));
+                    rs.getBigDecimal("novo_limite"),
+                    rs.getBigDecimal("novo_saldo"));
 
         } catch (SQLException e) {
             String causeMessage = e.getMessage();
@@ -49,13 +50,15 @@ public class TransactionRepository {
                 throw new RuntimeException("Erro inesperado ao processar a transação.", e);
             }
 
-            if (causeMessage.contains("Cliente não encontrado")) {
+            if (causeMessage.contains("CLIENTE_NAO_ENCONTRADO")) {
                 throw new EntityNotFoundException(causeMessage);
             }
 
-            if (causeMessage.contains("Limite da conta excedido")) {
+            if (causeMessage.contains("LIMITE_INDISPONIVEL")) {
                 throw new IllegalArgumentException(causeMessage);
             }
+        } catch(Exception e){
+            throw new InternalServerErrorException("Erro no BD");
         }
         return null;
     }
