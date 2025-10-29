@@ -1,25 +1,23 @@
 package com.rinha.dto.transaction;
 
-import java.math.BigDecimal;
-
 import io.quarkus.runtime.annotations.RegisterForReflection;
 
 @RegisterForReflection
 public class TransactionResponseDTO {
 
-    private BigDecimal limite;
-    private BigDecimal saldo;
+    private int limite;
+    private int saldo;
 
-    public TransactionResponseDTO(BigDecimal limite, BigDecimal saldo) {
+    public TransactionResponseDTO(int limite, int saldo) {
         this.limite = limite;
         this.saldo = saldo;
     }
 
-    public BigDecimal getLimite() {
+    public int getLimite() {
         return limite;
     }
 
-    public BigDecimal getSaldo() {
+    public int getSaldo() {
         return saldo;
     }
 }

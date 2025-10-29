@@ -34,7 +34,7 @@ public class TransactionRepository {
 
             PreparedStatement ps = conn.prepareStatement(sql);
             ps.setInt(1, clientId);
-            ps.setBigDecimal(2, dto.getValor());
+            ps.setInt(2, dto.getValor());
             ps.setString(3, dto.getTipo());
             ps.setString(4, dto.getDescricao());
 
@@ -52,8 +52,8 @@ public class TransactionRepository {
                 }
 
                 return new TransactionResponseDTO(
-                        rs.getBigDecimal("novo_limite"),
-                        rs.getBigDecimal("novo_saldo"));
+                        rs.getInt("novo_limite"),
+                        rs.getInt("novo_saldo"));
 
             }
 

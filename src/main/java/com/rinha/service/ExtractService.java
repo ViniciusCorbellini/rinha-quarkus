@@ -13,17 +13,19 @@ public class ExtractService {
     @Inject
     ExtractRepository repository;
 
-    public ExtractDTO getExtract(Integer clientId) throws EntityNotFoundException, IllegalArgumentException {
-        if (clientId == null || clientId <= 0) {
+    public ExtractDTO getExtract(int clientId)
+            throws EntityNotFoundException, IllegalArgumentException {
+
+        if (clientId <= 0) {
             throw new IllegalArgumentException("Id invalido");
         }
 
-        ExtractDTO extract = repository.getExtractByClientId(clientId);
-
-        if (extract == null) {
-            throw new EntityNotFoundException("Client not found");
-        }
-
-        return extract;
+        // --- OTIMIZAÇÃO (REMOÇÃO) ---
+        // O repository.getExtractByClientId(clientId) agora lança
+        // EntityNotFoundException se o cliente não existir.
+        // O 'if (extract == null)' foi removido.
+        // Esta chamada ou retorna o Extrato ou lança a Exceção.
+        // Não há mais 'null' para checar.
+        return repository.getExtractByClientId(clientId);
     }
 }

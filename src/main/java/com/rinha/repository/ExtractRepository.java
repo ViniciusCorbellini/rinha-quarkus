@@ -1,17 +1,20 @@
 package com.rinha.repository;
 
-import com.rinha.dto.ExtractDTO;
-import com.rinha.dto.TransactionDTO;
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.inject.Inject;
-import io.agroal.api.AgroalDataSource;
-
-import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.time.LocalDateTime;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
+
+import com.rinha.dto.ExtractDTO;
+import com.rinha.dto.TransactionDTO;
+import com.rinha.exceptions.EntityNotFoundException;
+
+import io.agroal.api.AgroalDataSource;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 
 @ApplicationScoped
 public class ExtractRepository {
@@ -20,30 +23,55 @@ public class ExtractRepository {
     AgroalDataSource dataSource;
 
     public ExtractDTO getExtractByClientId(int accountId) {
-        String sql = "SELECT total, limite, data_extrato, ultimas_transacoes FROM obter_extrato(?);";
+        // Chamar a nova função "flat"
+        String sql = "SELECT * FROM obter_extrato(?);";
 
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setInt(1, accountId);
+            
             try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    BigDecimal total = rs.getBigDecimal("total");
-                    BigDecimal limite = rs.getBigDecimal("limite");
-                    LocalDateTime dataExtrato = rs.getTimestamp("data_extrato").toLocalDateTime();
+                ExtractDTO.SaldoDto saldo = null;
+                List<TransactionDTO> transacoes = new ArrayList<>(10); // Pré-alocar espaço
 
-                    String json = rs.getString("ultimas_transacoes");
-                    List<TransactionDTO> transacoes = (json != null && !json.equals("null"))
-                            ? TransactionDTO.fromJsonArray(json)
-                            : List.of();
+                boolean clientExists = false;
 
-                    ExtractDTO.SaldoDto saldo = new ExtractDTO.SaldoDto(total, limite, dataExtrato);
-                    return new ExtractDTO(saldo, transacoes);
-                } else {
-                    return null;
+                while (rs.next()) {
+                    clientExists = true;
+
+                    // Otimização: ler o saldo apenas na primeira linha
+                    if (saldo == null) {
+                        saldo = new ExtractDTO.SaldoDto(
+                            rs.getInt("total"),
+                            rs.getInt("limite"),
+                            rs.getTimestamp("data_extrato").toLocalDateTime()
+                        );
+                    }
+
+                    // Checar se a transação existe (pode ser nula devido ao LEFT JOIN)
+                    Timestamp transTimestamp = rs.getTimestamp("trans_realizada_em");
+                    if (transTimestamp != null) {
+                        transacoes.add(new TransactionDTO(
+                            rs.getInt("trans_valor"),
+                            rs.getString("trans_tipo"),
+                            rs.getString("trans_descricao"),
+                            transTimestamp.toLocalDateTime()
+                        ));
+                    }
                 }
+
+                if (!clientExists) {
+                    throw new EntityNotFoundException("Cliente não encontrado: " + accountId);
+                }
+
+                // Se o cliente existe mas não tem transações, o 'saldo' foi lido
+                // e a lista 'transacoes' estará vazia.
+                return new ExtractDTO(saldo, transacoes);
+                
             }
-        } catch (Exception e) {
+        } catch (SQLException e) {
+            // Adicionar tratamento de SQLSTATE se o DB lançar erro de "não encontrado"
             throw new RuntimeException("Erro no BD ao buscar extrato: " + e.getMessage(), e);
         }
     }

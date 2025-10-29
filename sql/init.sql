@@ -14,8 +14,8 @@ CREATE TABLE IF NOT EXISTS transactions (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_transactions_account_id_created_at
-  ON transactions(account_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_transactions_account_id_id
+  ON transactions(account_id, id DESC);
 
 DO $$
 BEGIN
@@ -36,33 +36,30 @@ RETURNS TABLE (
     total NUMERIC,
     limite NUMERIC,
     data_extrato TIMESTAMP WITH TIME ZONE,
-    ultimas_transacoes JSON
+    trans_valor NUMERIC,
+    trans_tipo CHAR(1),
+    trans_descricao VARCHAR(10),
+    trans_realizada_em TIMESTAMP 
 ) AS $$
 BEGIN
     RETURN QUERY
     SELECT
-        a.balance::NUMERIC,   -- <-- FAÇA O CAST AQUI
-        a.limite::NUMERIC,    -- <-- E FAÇA O CAST AQUI
+        a.balance::NUMERIC,
+        a.limite::NUMERIC,
         now(),
-        COALESCE(
-            (SELECT
-                json_agg(json_build_object(
-                    'valor', t.amount,
-                    'tipo', t.type,
-                    'descricao', t.description,
-                    'realizada_em', t.created_at
-                ))
-            FROM (
-                SELECT amount, type, description, created_at
-                FROM transactions
-                WHERE account_id = a.id
-                ORDER BY created_at DESC
-                LIMIT 10
-            ) t),
-            '[]'::json
-        )
+        t.amount::NUMERIC,
+        t.type,
+        t.description,
+        t.created_at 
     FROM
         accounts a
+    LEFT JOIN (
+        SELECT account_id, amount, type, description, created_at
+        FROM transactions
+        WHERE account_id = p_account_id
+        ORDER BY created_at DESC
+        LIMIT 10
+    ) t ON a.id = t.account_id
     WHERE
         a.id = p_account_id;
 END;

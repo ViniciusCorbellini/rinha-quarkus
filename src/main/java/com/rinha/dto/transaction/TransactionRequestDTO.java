@@ -1,19 +1,17 @@
 package com.rinha.dto.transaction;
 
-import java.math.BigDecimal;
-
 public class TransactionRequestDTO {
-    private BigDecimal valor;
+    private int valor;
 
     private String tipo;
 
     private String descricao;
 
-    public BigDecimal getValor() {
+    public int getValor() {
         return valor;
     }
 
-    public void setValor(BigDecimal valor) {
+    public void setValor(int valor) {
         this.valor = valor;
     }
 
