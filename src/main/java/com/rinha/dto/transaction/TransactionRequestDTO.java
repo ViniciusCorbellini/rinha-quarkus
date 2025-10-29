@@ -3,7 +3,7 @@ package com.rinha.dto.transaction;
 public class TransactionRequestDTO {
     private int valor;
 
-    private String tipo;
+    private char tipo;
 
     private String descricao;
 
@@ -15,10 +15,10 @@ public class TransactionRequestDTO {
         this.valor = valor;
     }
 
-    public String getTipo() {
+    public char getTipo() {
         return tipo;
     }
-    public void setTipo(String tipo) {
+    public void setTipo(char tipo) {
         this.tipo = tipo;
     }
 

@@ -7,7 +7,7 @@ import io.quarkus.runtime.annotations.RegisterForReflection;
 @RegisterForReflection
 public record TransactionDTO(
         int valor,
-        String tipo,
+        char tipo,
         String descricao,
         LocalDateTime realizada_em
 ) {}

@@ -28,8 +28,8 @@ public class TransactionService {
         // --- TODO ---
         // Comparação de 'char' é ordens de magnitude mais rápida
         // que String.equals()
-        String tipo = dto.getTipo();
-        if (!"c".equals(tipo) && !"d".equals(tipo)) {
+        char tipo = dto.getTipo();
+        if ('c' != tipo && 'd' != tipo) {
             throw new IllegalArgumentException("Tipo invalido");
         }
 

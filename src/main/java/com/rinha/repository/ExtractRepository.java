@@ -54,7 +54,7 @@ public class ExtractRepository {
                     if (transTimestamp != null) {
                         transacoes.add(new TransactionDTO(
                             rs.getInt("trans_valor"),
-                            rs.getString("trans_tipo"),
+                            rs.getString("trans_tipo").charAt(0),
                             rs.getString("trans_descricao"),
                             transTimestamp.toLocalDateTime()
                         ));

@@ -35,7 +35,7 @@ public class TransactionRepository {
             PreparedStatement ps = conn.prepareStatement(sql);
             ps.setInt(1, clientId);
             ps.setInt(2, dto.getValor());
-            ps.setString(3, dto.getTipo());
+            ps.setString(3, String.valueOf(dto.getTipo()));
             ps.setString(4, dto.getDescricao());
 
             try (ResultSet rs = ps.executeQuery()) {
