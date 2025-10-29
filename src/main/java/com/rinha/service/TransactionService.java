@@ -25,9 +25,6 @@ public class TransactionService {
             throw new IllegalArgumentException("Descricao invalida");
         }
 
-        // --- TODO ---
-        // Comparação de 'char' é ordens de magnitude mais rápida
-        // que String.equals()
         char tipo = dto.getTipo();
         if ('c' != tipo && 'd' != tipo) {
             throw new IllegalArgumentException("Tipo invalido");
