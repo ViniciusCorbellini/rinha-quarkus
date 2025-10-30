@@ -30,6 +30,11 @@
     </dependencyManagement>
 
     <dependencies>
+        <dependency>
+            <groupId>io.quarkus</groupId>
+            <artifactId>quarkus-rest</artifactId>
+        </dependency>
+
         <!-- REST API com JSON -->
         <dependency>
             <groupId>io.quarkus</groupId>

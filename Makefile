@@ -1,4 +1,4 @@
-# Makefile para build e deploy da aplicação Spring + Docker em WSL
+# Makefile para build e deploy da aplicação Quarkus + Docker em WSL
 
 # Variáveis
 JAR_FILE=target/*.jar
@@ -7,9 +7,12 @@ JAR_FILE=target/*.jar
 build:
 	mvn clean package -DskipTests
 
-#Sobe os serviços em modo daemon, sem usar terminal
+#Sobe os serviços
 up:
-	
+	docker compose --compatibility up --build
+
+#Sobe os serviços em modo daemon, sem usar terminal
+up_backgrtound:
 	docker compose --compatibility up -d --build
 
 # Derruba os containers e remove volumes
@@ -29,10 +32,9 @@ run:
 
 # Resetar o banco e rodar a simulação (Gatling)
 test:
-	docker exec postgres psql -U postgres -d postgres_api_db -v ON_ERROR_STOP=1 \
-	-c "BEGIN; TRUNCATE TABLE transactions; UPDATE accounts SET balance = 0; COMMIT;" \
-	&& mvn gatling:test -Dgatling.simulationClass=simulations.RinhaBackendCrebitosSimulation
+	make up_background
+	cd gatling && mvn gatling:test -Dgatling.simulationClass=simulations.RinhaBackendCrebitosSimulation
 
 #Roda o script que inicia o teste em sh para linux
 test_sh:
-	./_linux_run-test-launcher.sh
+	./_linux_run-test-launcher.sh 1
