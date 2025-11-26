@@ -37,10 +37,12 @@ public class Controller {
             ExtractDTO extract = extractService.getExtract(id);
             return Response.ok(extract).build();
         } catch (EntityNotFoundException e) {
+            e.printStackTrace();
             return Response.status(Response.Status.NOT_FOUND)
                     .entity("{\"error\": \"Client not found\"}")
                     .build();
         } catch (Exception e) {
+            e.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity("{\"error\": \"Internal Error\"}")
                     .build();
@@ -54,14 +56,17 @@ public class Controller {
             TransactionResponseDTO response = transactionService.processTransaction(id, dto);
             return Response.ok(response).build();
         } catch (IllegalArgumentException e) {
+            e.printStackTrace();
             return Response.status(422)
                     .entity("{\"erro\": \"" + e.getMessage() + "\"}")
                     .build();
         } catch (EntityNotFoundException e) {
+            e.printStackTrace();
             return Response.status(Response.Status.NOT_FOUND)
                     .entity("{\"erro\": \"" + e.getMessage() + "\"}")
                     .build();
         } catch (Exception e) {
+            e.printStackTrace();
             return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
                     .entity("{\"erro\": \"Internal Error\"}")
                     .build();

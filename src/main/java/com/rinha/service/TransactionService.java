@@ -20,21 +20,21 @@ public class TransactionService {
             throw new IllegalArgumentException("Id invalido");
         }
 
-        String descricao = dto.getDescricao();
+        String descricao = dto.descricao();
         if (descricao == null || descricao.isBlank() || descricao.length() > 10) {
             throw new IllegalArgumentException("Descricao invalida");
         }
 
-        char tipo = dto.getTipo();
+        char tipo = dto.tipo();
         if ('c' != tipo && 'd' != tipo) {
             throw new IllegalArgumentException("Tipo invalido");
         }
 
-        int valor = dto.getValor();
+        int valor = dto.valor();
         if (valor <= 0) {
             throw new IllegalArgumentException("Valor invalido");
         }
 
-        return repository.processTransaction(clientId, dto);
+        return repository.createTransaction(clientId, dto);
     }
 }

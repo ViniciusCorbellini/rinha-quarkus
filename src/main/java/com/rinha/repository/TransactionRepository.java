@@ -12,7 +12,6 @@ import com.rinha.exceptions.EntityNotFoundException;
 import io.agroal.api.AgroalDataSource;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-import jakarta.ws.rs.InternalServerErrorException;
 
 @ApplicationScoped
 public class TransactionRepository {
@@ -20,67 +19,73 @@ public class TransactionRepository {
     @Inject
     AgroalDataSource dataSource;
 
-    // Códigos SQLSTATE customizados, definidos no init.sql
-    private static final String ERR_CLIENTE_NAO_ENCONTRADO = "P0001";
-    private static final String ERR_LIMITE_INDISPONIVEL = "P0002";
-    // Código SQLSTATE padrão do Postgres para CHECK constraint
-    private static final String ERR_CHECK_VIOLATION = "23514";
+    public TransactionResponseDTO createTransaction(int accountId, TransactionRequestDTO req) {
+        if (accountId < 1 || accountId > 5) {
+            throw new EntityNotFoundException("Cliente não encontrado");
+        }
 
-    public TransactionResponseDTO processTransaction(int clientId, TransactionRequestDTO dto)
-            throws IllegalArgumentException, EntityNotFoundException, RuntimeException {
+        String sql = "SELECT process_transaction(?, ?, ?, ?)";
 
-        try (Connection conn = dataSource.getConnection()) {
-            String sql = "SELECT novo_saldo, novo_limite FROM realizar_transacao(?, ?, ?, ?);";
+        try (Connection conn = dataSource.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setInt(1, clientId);
-            ps.setInt(2, dto.getValor());
-            ps.setString(3, String.valueOf(dto.getTipo()));
-            ps.setString(4, dto.getDescricao());
+            ps.setInt(1, accountId);
+            ps.setInt(2, req.valor());
+            ps.setString(3, String.valueOf(req.tipo()));
+            ps.setString(4, req.descricao());
 
             try (ResultSet rs = ps.executeQuery()) {
-                // Se o DB foi alterado para lançar exceção, rs.next()
-                // NUNCA será falso. Ele só é chamado se a query for um sucesso.
-                // Isso simplifica o "happy path".
-                if (!rs.next()) {
-                    // Este bloco SÓ será atingido se a função do DB retornar 0 linhas
-                    // em vez de lançar uma exceção P0001.
-                    // Mantenha apenas UMA estratégia (exceção é melhor).
-                    // Assumindo que o DB lança exceção, esta linha abaixo é desnecessária.
-                    throw new EntityNotFoundException("Cliente não encontrado");
+                if (rs.next()) {
+                    String jsonResult = rs.getString(1);
 
+                    // Validação de Erro de Negócio (Regra para HTTP 422)
+                    // Se o ID já passou na validação acima (1-5), e o banco retornou erro,
+                    // a única causa possível é falta de saldo/limite.
+                    if (jsonResult == null || jsonResult.contains("\"error\":")) {
+                        throw new IllegalArgumentException("Limite excedido ou saldo insuficiente");
+                    }
+
+                    return parseJsonToDto(jsonResult);
                 }
-
-                return new TransactionResponseDTO(
-                        rs.getInt("novo_limite"),
-                        rs.getInt("novo_saldo"));
-
             }
-
         } catch (SQLException e) {
-            String sqlState = e.getSQLState();
-
-            if (sqlState == null) {
-                // Erro não esperado, sem SQLSTATE
-                throw new InternalServerErrorException("Erro inesperado de SQL.", e);
-            }
-
-            // Esta é a otimização. Um switch em 5 caracteres.
-            // É ordens de magnitude mais rápido que .getMessage().contains()
-            switch (sqlState) {
-                case ERR_CLIENTE_NAO_ENCONTRADO: // "P0001"
-                    throw new EntityNotFoundException("Cliente não encontrado: " + clientId);
-
-                case ERR_LIMITE_INDISPONIVEL:  // "P0002"
-                case ERR_CHECK_VIOLATION:      // "23514"
-                    throw new IllegalArgumentException("Limite indisponível.");
-
-                default:
-                    // Outro erro de SQL que não mapeamos (ex: '23503' FK violation)
-                    throw new InternalServerErrorException("Erro no BD ao processar transação.", e);
-            }
-        } catch (Exception e) {
-            throw new InternalServerErrorException("Erro ao processar resposta do BD.", e);
+            // Capturado pelo catch(Exception e) -> 500 Internal Server Error
+            throw new RuntimeException("Erro de conexão ao processar transação", e);
         }
+
+        // Caso defensivo (não deve acontecer com a function atual)
+        throw new RuntimeException("Erro inesperado: banco não retornou resposta");
+    }
+
+    /**
+     * Faz o parsing manual da string JSON {"saldo": X, "limite": Y} Evita o
+     * overhead do Jackson/Gson para essa estrutura simples e crítica.
+     */
+    private TransactionResponseDTO parseJsonToDto(String json) {
+        // Remove chaves e aspas para facilitar
+        // json original: {"saldo": -900, "limite": 1000}
+        // "limpo": saldo: -900, limite: 1000
+
+        String content = json.replace("{", "")
+                .replace("}", "")
+                .replace("\"", "");
+
+        String[] parts = content.split(",");
+
+        int saldo = 0;
+        int limite = 0;
+
+        for (String part : parts) {
+            String[] kv = part.split(":");
+            String key = kv[0].trim();
+            int value = Integer.parseInt(kv[1].trim());
+
+            if ("saldo".equals(key)) {
+                saldo = value;
+            } else if ("limite".equals(key)) {
+                limite = value;
+            }
+        }
+
+        return new TransactionResponseDTO(limite, saldo);
     }
 }
